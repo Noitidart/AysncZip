@@ -1,11 +1,6 @@
 @-moz-document url("chrome://browser/content/browser.xul") {
 	#cui_asynczip {
 		list-style-image: url('chrome://asynczip/content/resources/images/icon16.png');
-		filter: grayscale(1);
-		transition: filter 200ms;
-	}
-	#cui_asynczip:hover {
-		filter: grayscale(0);
 	}
 	#cui_asynczip[cui-areatype="menu-panel"],
 	toolbarpaletteitem[place="palette"] > #cui_asynczip {

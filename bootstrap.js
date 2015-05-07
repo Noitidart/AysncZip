@@ -179,6 +179,7 @@ function saveUnzippedToDisk(aDOMWin, aArrayBuffer, aOSPath_destDir, aDefaultName
 	var do_unzip = function() {
 		// use a BlobReader to read the zip from a Blob object
 		var blob = new Blob([new Uint8Array(aArrayBuffer)], {type: 'application/octet-binary'});
+		console.log('myServices.zip:', myServices.zip);
 		myServices.zip.createReader(
 			new myServices.zip.BlobReader(blob),
 			function(reader) {
@@ -211,7 +212,7 @@ function saveUnzippedToDisk(aDOMWin, aArrayBuffer, aOSPath_destDir, aDefaultName
 				);
 			},
 			function(error) {
-				console.error('onerror callback');
+				console.error('onerror callback, error:', error);
 			}
 		);
 	};
@@ -302,9 +303,16 @@ function uninstall() {}
 function startup(aData, aReason) {
 	core.addon.aData = aData;
 	extendCore();
+	var nsIFile_workers = aData.installPath;
+	nsIFile_workers.append('modules');
+	nsIFile_workers.append('workers');
+	var osPath_workers = OS.Path.join(nsIFile_workers.path, '');
+	var filePath_workers = OS.Path.toFileURI(osPath_workers);
+	var jarPath_workers = 'jar:' + filePath_workers.replace(aData.id + '.xpi', aData.id + '.xpi!');
 	
-	myServices.zip = Cu.import(core.addon.path.modules + 'zip.js');
-	myServices.zip.workerScriptsPath = core.addon.path.workers;
+	console.log(osPath_workers, filePath_workers, jarPath_workers);
+	myServices.zip = Cu.import(core.addon.path.modules + 'zip.js').zip;
+	myServices.zip.workerScriptsPath = jarPath_workers + '/';
 	
 	CustomizableUI.createWidget({
 		id: 'cui_asynczip',
