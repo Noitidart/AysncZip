@@ -1,0 +1,3 @@
+content asynczip ./
+locale asynczip en-US locale/en-US/
+locale asynczip en-GB locale/en-GB/
