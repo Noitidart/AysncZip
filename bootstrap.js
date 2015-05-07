@@ -7,6 +7,7 @@ Cu.import('resource://gre/modules/osfile.jsm');
 Cu.import('resource://gre/modules/Promise.jsm');
 Cu.import('resource://gre/modules/Services.jsm');
 Cu.import('resource://gre/modules/XPCOMUtils.jsm');
+Cu.importGlobalProperties(['Blob']);
 
 // Globals
 const core = {
@@ -28,7 +29,6 @@ const core = {
 	}
 };
 const cui_cssUri = Services.io.newURI(core.addon.path.resources + 'cui.css', null, null);
-var justSaved;
 
 // Lazy Imports
 const myServices = {};
@@ -96,6 +96,7 @@ function extendCore() {
 // START - Addon Functionalities
 function saveZippedToDisk(aDOMWin, aArrayBuffer, aOSPath_destDir, aDefaultName) {
 	
+	var deferredMain_saveZippedToDisk = new Deferred();
 	// prompt asking for folder and filename to save to
 
 	var cIn = {value:aDefaultName};
@@ -104,22 +105,120 @@ function saveZippedToDisk(aDOMWin, aArrayBuffer, aOSPath_destDir, aDefaultName) 
 		throw new Error('cancelled'); // so it goes to aCatch and doesn't prompt user
 	}
 	var cOSPath = OS.Path.join(aOSPath_destDir, cIn.value + '.zip');
-	justSaved = cOSPath;
 	
-	return OS.File.writeAtomic(cOSPath, new Uint8Array(aArrayBuffer), {
+	var promise_write = OS.File.writeAtomic(cOSPath, new Uint8Array(aArrayBuffer), {
 		tmpPath: cOSPath + '.tmp'
 	});
+	promise_write.then(
+		function(aVal) {
+			console.log('Fullfilled - promise_write - ', aVal);
+			// start - do stuff here - promise_write
+			deferredMain_saveZippedToDisk.resolve(cOSPath);
+			// end - do stuff here - promise_write
+		},
+		function(aReason) {
+			var rejObj = {name:'promise_write', aReason:aReason};
+			console.warn('Rejected - promise_write - ', rejObj);
+			deferred_createProfile.reject(rejObj);
+		}
+	).catch(
+		function(aCaught) {
+			var rejObj = {name:'promise_write', aCaught:aCaught};
+			console.error('Caught - promise_write - ', rejObj);
+			deferred_createProfile.reject(rejObj);
+		}
+	);
+	
+	return deferredMain_saveZippedToDisk.promise;
 }
 
-function saveUnzippedToDisk(aDOMWin, aArrayBuffer, aDefaultName) {
-	// prompt asking if should create a folder in selected directory or should it just save the contents to the folder
-	var fp = Cc['@mozilla.org/filepicker;1'].createInstance(Ci.nsIFilePicker);
-	fp.init(aDOMWin, 'Save Destination', Ci.nsIFilePicker.modeGetFolder);
-
-	var rv = fp.show();
-	if (rv != Ci.nsIFilePicker.returnOK) { return }
+function saveUnzippedToDisk(aDOMWin, aArrayBuffer, aOSPath_destDir, aDefaultName) {
+	var deferredMain_saveUnzippedToDisk = new Deferred();
 	
-	// prompt asking if should make a sub folder in selected directory
+	// globals for callbacks
+	var cOSPath;
+	
+	var do_asksubdir = function() {
+		// prompt asking if should create a folder in selected directory or should it just save the contents to the folder
+		var cIn = {value:aDefaultName};
+		var cInput = Services.prompt.prompt(aDOMWin, 'Create Subfolder?', 'Would you like to createa subfolder in destination directory of "' + aOSPath_destDir + '" to unzip the contents into?', cIn, null, {});
+		if (cInput && cIn.value != '') {
+			// make dir first then unzip
+			cOSPath = OS.Path.join(aOSPath_destDir, cIn.value);
+			do_makedir();
+		} else {
+			cOSPath = aOSPath_destDir;
+			// unzip into dest dir
+			do_unzip();
+		}
+	}
+	
+	var do_makedir = function() {
+		var promise_makeit = OS.File.makeDir(cOSPath, {ignoreExisting:true});
+		promise_makeit.then(
+			function(aVal) {
+				console.log('Fullfilled - promise_makeit - ', aVal);
+				// start - do stuff here - promise_makeit
+				do_unzip();
+				// end - do stuff here - promise_makeit
+			},
+			function(aReason) {
+				var rejObj = {name:'promise_makeit', aReason:aReason};
+				console.warn('Rejected - promise_makeit - ', rejObj);
+				deferredMain_saveUnzippedToDisk.reject(rejObj);
+			}
+		).catch(
+			function(aCaught) {
+				var rejObj = {name:'promise_makeit', aCaught:aCaught};
+				console.error('Caught - promise_makeit - ', rejObj);
+				deferredMain_saveUnzippedToDisk.reject(rejObj);
+			}
+		);
+	}
+	
+	var do_unzip = function() {
+		// use a BlobReader to read the zip from a Blob object
+		var blob = new Blob([new Uint8Array(aArrayBuffer)], {type: 'application/octet-binary'});
+		myServices.zip.createReader(
+			new myServices.zip.BlobReader(blob),
+			function(reader) {
+
+				// get all entries from the zip
+				reader.getEntries(
+					function(entries) {
+						if (entries.length) {
+							// get first entry content as text
+							entries[0].getData(
+								new myServices.zip.TextWriter(),
+								function(text) {
+									// text contains the entry data as a String
+									console.log(text);
+
+									// close the zip reader
+									reader.close(function() {
+										console.info('onclose callback');
+									});
+
+								},
+								function(current, total) {
+									console.info('onprogress callback', current, total);
+								}
+							);
+						} else {
+							console.error('no entries!');
+						}
+					}
+				);
+			},
+			function(error) {
+				console.error('onerror callback');
+			}
+		);
+	};
+	
+	do_asksubdir();
+
+	return deferredMain_saveUnzippedToDisk.promise;
 }
 
 function downloadZipData(aStr) {
@@ -271,7 +370,7 @@ function startup(aData, aReason) {
 						console.log('Fullfilled - promise_saveIt - ', aVal);
 						// start - do stuff here - promise_saveIt
 						Services.prompt.alert(aDOMWin, myServices.sb.GetStringFromName('fetch_save_done_title'), myServices.sb.GetStringFromName('fetch_save_done_msg'));
-						showDownloadedFile(new FileUtils.File(justSaved));
+						showDownloadedFile(new FileUtils.File(aVal));
 						// end - do stuff here - promise_saveIt
 					},
 					function(aReason) {
