@@ -24,6 +24,12 @@
 		<em:description>Downloads a zip and saves compressed or uncompressed, completely asynchronously.</em:description>
 		<em:creator>Noitidart</em:creator>
 		<em:contributor>Yannick Lung for Icon</em:contributor>
+		<em:contributor>Rob--W for zip.js</em:contributor>
+		<em:contributor>gildas-lormeau for zip.js</em:contributor>
+		<em:contributor>duanyao for zip.js</em:contributor>
+		<em:contributor>davispuh for zip.js</em:contributor>
+		<em:contributor>Renanse for zip.js</em:contributor>
+		<em:contributor>spacemunkay for zip.js</em:contributor>
 		<!-- start localizing - For each entry in default data MUST have equivalent in each localized block -->
 		<em:localized>
 			<Description>
@@ -32,6 +38,12 @@
 				<em:description>Downloads a zip and saves compressed or uncompressed, completely asynchronously.</em:description>
 				<em:creator>Noitidart</em:creator>
 				<em:contributor>Yannick Lung for Icon</em:contributor>
+				<em:contributor>Rob--W for zip.js</em:contributor>
+				<em:contributor>gildas-lormeau for zip.js</em:contributor>
+				<em:contributor>duanyao for zip.js</em:contributor>
+				<em:contributor>davispuh for zip.js</em:contributor>
+				<em:contributor>Renanse for zip.js</em:contributor>
+				<em:contributor>spacemunkay for zip.js</em:contributor>
 			</Description>
 		</em:localized>
 		<em:localized>
@@ -41,6 +53,12 @@
 				<em:description>Downloads a zip and saves compressed or uncompressed, completely asynchronously.</em:description>
 				<em:creator>Noitidart</em:creator>
 				<em:contributor>Yannick Lung for Icon</em:contributor>
+				<em:contributor>Rob--W for zip.js</em:contributor>
+				<em:contributor>gildas-lormeau for zip.js</em:contributor>
+				<em:contributor>duanyao for zip.js</em:contributor>
+				<em:contributor>davispuh for zip.js</em:contributor>
+				<em:contributor>Renanse for zip.js</em:contributor>
+				<em:contributor>spacemunkay for zip.js</em:contributor>
 			</Description>
 		</em:localized>
 	  </Description>

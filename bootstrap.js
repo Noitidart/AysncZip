@@ -313,6 +313,7 @@ function startup(aData, aReason) {
 	console.log(osPath_workers, filePath_workers, jarPath_workers);
 	myServices.zip = Cu.import(core.addon.path.modules + 'zip.js').zip;
 	myServices.zip.workerScriptsPath = jarPath_workers + '/';
+	console.log('myServices.zip.workerScriptsPath:', myServices.zip.workerScriptsPath);
 	
 	CustomizableUI.createWidget({
 		id: 'cui_asynczip',
