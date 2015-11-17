@@ -1,4 +1,5 @@
 /* jshint worker:true */
+console.error('from z-worker.js man!');
 (function main(global) {
 	"use strict";
 

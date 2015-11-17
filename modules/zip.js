@@ -1,6 +1,10 @@
 // Let's call this file zip.js/zip.js
 const EXPORTED_SYMBOLS = ['zip'];
+const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
+Components.utils.importGlobalProperties(['Blob', 'atob', 'btoa']);
 
+Cu.import('resource://gre/modules/devtools/Console.jsm');
+console.error('diff msg');
 // zip.js content here
 
 /*
@@ -180,7 +184,7 @@ const EXPORTED_SYMBOLS = ['zip'];
 		}
 
 		function readUint8Array(index, length, callback, onerror) {
-			var reader = new FileReader();
+			var reader = Cc['@mozilla.org/files/filereader;1'].createInstance(Ci.nsIDOMFileReader); //new FileReader();
 			reader.onload = function(e) {
 				callback(new Uint8Array(e.target.result));
 			};
@@ -225,7 +229,7 @@ const EXPORTED_SYMBOLS = ['zip'];
 		}
 
 		function getData(callback, onerror) {
-			var reader = new FileReader();
+			var reader = Cc['@mozilla.org/files/filereader;1'].createInstance(Ci.nsIDOMFileReader); //new FileReader();
 			reader.onload = function(e) {
 				callback(e.target.result);
 			};
@@ -886,8 +890,11 @@ const EXPORTED_SYMBOLS = ['zip'];
 			scripts = resolveURLs(scripts);
 		} else {
 			scripts = DEFAULT_WORKER_SCRIPTS[type].slice(0);
+			console.error('scripts[0]:', scripts[0]);
+			console.error('obj.zip.workerScriptsPath:', obj.zip.workerScriptsPath);
 			scripts[0] = (obj.zip.workerScriptsPath || '') + scripts[0];
 		}
+		console.info('scripts[0]:', scripts[0]);
 		var worker = new Worker(scripts[0]);
 		// record total consumed time by inflater/deflater/crc32 in this worker
 		worker.codecTime = worker.crcTime = 0;

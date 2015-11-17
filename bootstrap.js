@@ -189,6 +189,7 @@ function saveUnzippedToDisk(aDOMWin, aArrayBuffer, aOSPath_destDir, aDefaultName
 					function(entries) {
 						if (entries.length) {
 							// get first entry content as text
+							console.log('entries:', entries);
 							entries[0].getData(
 								new myServices.zip.TextWriter(),
 								function(text) {
@@ -312,7 +313,9 @@ function startup(aData, aReason) {
 	core.addon.path.workersJar = core.addon.path.workers.replace(core.addon.path.content, core.addon.path.xpiJar);
 
 	myServices.zip = Cu.import(core.addon.path.modules + 'zip.js').zip;
-	myServices.zip.workerScriptsPath = core.addon.path.workersJar;
+	// myServices.zip.workerScriptsPath = OS.Path.join(core.addon.path.workersFileUri, ' ');
+	// myServices.zip.workerScriptsPath = myServices.zip.workerScriptsPath.substr(0, myServices.zip.workerScriptsPath.length-1);
+	myServices.zip.workerScriptsPath = core.addon.path.workers; // os path does not work here. jar might. this path is passed to `new Worker( + 'z-worker.js')`
 	
 	console.log('core.addon.path.workersJar:', core.addon.path.workersJar);
 	console.log('core.addon.path.workersFileUri:', core.addon.path.workersFileUri);
@@ -421,7 +424,7 @@ function shutdown(aData, aReason) {
 	windowListener.unregister();
 	//end windowlistener more
 	
-	Cu.unload(core.addon.path.modules + 'modules/zipjs.jsm');
+	Cu.unload(core.addon.path.modules + 'zip.js')
 }
 
 // start - common helper functions
