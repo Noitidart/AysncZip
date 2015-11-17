@@ -1,3 +1,10 @@
+// Let's call this file zip.js/zip.js
+const EXPORTED_SYMBOLS = ['zip'];
+const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
+Components.utils.importGlobalProperties(['Blob', 'atob', 'btoa']);
+
+// zip.js content here
+
 /*
  Copyright (c) 2013 Gildas Lormeau. All rights reserved.
 
@@ -175,7 +182,7 @@
 		}
 
 		function readUint8Array(index, length, callback, onerror) {
-			var reader = new FileReader();
+			var reader = Cc['@mozilla.org/files/filereader;1'].createInstance(Ci.nsIDOMFileReader); //new FileReader();
 			reader.onload = function(e) {
 				callback(new Uint8Array(e.target.result));
 			};
@@ -220,7 +227,7 @@
 		}
 
 		function getData(callback, onerror) {
-			var reader = new FileReader();
+			var reader = Cc['@mozilla.org/files/filereader;1'].createInstance(Ci.nsIDOMFileReader); //new FileReader();
 			reader.onload = function(e) {
 				callback(e.target.result);
 			};
@@ -354,6 +361,7 @@
 				case 'echo':
 					break;
 				default:
+					Cu.import('resource://gre/modules/devtools/Console.jsm');
 					console.warn('zip.js:launchWorkerProcess: unknown message: ', message);
 			}
 		}
@@ -912,6 +920,7 @@
 		worker.addEventListener('error', errorHandler);
 		function errorHandler(err) {
 			worker.terminate();
+			Cu.import('resource://gre/modules/devtools/Console.jsm');
 			onerror(err);
 		}
 	}
