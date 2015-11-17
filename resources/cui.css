@@ -1,4 +1,12 @@
 @-moz-document url("chrome://browser/content/browser.xul") {
+	#cui_asynczip > .toolbarbutton-icon::after {
+		width: 16px;
+		height: 16px;
+		/*background: transparent url('chrome://asynczip/content/resources/images/icon16.png') no-repeat scroll center center;*/
+		background-color:red;
+		transform: scale(2);
+		position: absolute;
+	}
 	#cui_asynczip {
 		list-style-image: url('chrome://asynczip/content/resources/images/icon16.png');
 	}

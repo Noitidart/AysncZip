@@ -18,7 +18,7 @@ const core = {
 			name: 'asynczip',
 			content: 'chrome://asynczip/content/',
 			modules: 'chrome://asynczip/content/modules/',
-			workers: 'chrome://asynczip//content/modules/workers/',
+			workers: 'chrome://asynczip/content/modules/workers/',
 			locale: 'chrome://asynczip/locale/',
 			resources: 'chrome://asynczip/content/resources/',
 			images: 'chrome://asynczip/content/resources/images/'
@@ -303,17 +303,21 @@ function uninstall() {}
 function startup(aData, aReason) {
 	core.addon.aData = aData;
 	extendCore();
-	var nsIFile_workers = aData.installPath;
-	nsIFile_workers.append('modules');
-	nsIFile_workers.append('workers');
-	var osPath_workers = OS.Path.join(nsIFile_workers.path, '');
-	var filePath_workers = OS.Path.toFileURI(osPath_workers);
-	var jarPath_workers = 'jar:' + filePath_workers.replace(aData.id + '.xpi', aData.id + '.xpi!');
 	
-	console.log(osPath_workers, filePath_workers, jarPath_workers);
+	core.addon.path.xpiJar = 'jar:' + OS.Path.toFileURI(aData.installPath.path) + '!/';
+	core.addon.path.xpiFileUri = aData.installPath.path;
+	
+	
+	core.addon.path.workersFileUri = OS.Path.join(core.addon.path.xpiFileUri, 'modules', 'workers');
+	core.addon.path.workersJar = core.addon.path.workers.replace(core.addon.path.content, core.addon.path.xpiJar);
+
 	myServices.zip = Cu.import(core.addon.path.modules + 'zip.js').zip;
-	myServices.zip.workerScriptsPath = jarPath_workers + '/';
-	console.log('myServices.zip.workerScriptsPath:', myServices.zip.workerScriptsPath);
+	myServices.zip.workerScriptsPath = core.addon.path.workersJar;
+	
+	console.log('core.addon.path.workersJar:', core.addon.path.workersJar);
+	console.log('core.addon.path.workersFileUri:', core.addon.path.workersFileUri);
+	console.log('core.addon.path.xpiJar:', core.addon.path.xpiJar);
+	console.log('core.addon.path.xpiFileUri:', core.addon.path.xpiFileUri);
 	
 	CustomizableUI.createWidget({
 		id: 'cui_asynczip',
