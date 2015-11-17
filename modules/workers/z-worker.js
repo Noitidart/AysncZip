@@ -1,5 +1,4 @@
 /* jshint worker:true */
-console.error('from z-worker.js man!');
 (function main(global) {
 	"use strict";
 
@@ -95,7 +94,13 @@ console.error('from z-worker.js man!');
 		}
 		if (!isAppend && (task.crcInput || task.crcOutput))
 			rmsg.crc = task.crc.get();
-		postMessage(rmsg, transferables);
+		
+		// posting a message with transferables will fail on IE10
+		try {
+			postMessage(rmsg, transferables);
+		} catch(ex) {
+			postMessage(rmsg); // retry without transferables
+		}
 	}
 
 	function onError(type, sn, e) {

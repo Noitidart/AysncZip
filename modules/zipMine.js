@@ -1,3 +1,12 @@
+// Let's call this file zip.js/zip.js
+const EXPORTED_SYMBOLS = ['zip'];
+const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
+Components.utils.importGlobalProperties(['Blob', 'atob', 'btoa']);
+
+Cu.import('resource://gre/modules/devtools/Console.jsm');
+console.error('diff msg');
+// zip.js content here
+
 /*
  Copyright (c) 2013 Gildas Lormeau. All rights reserved.
 
@@ -175,7 +184,7 @@
 		}
 
 		function readUint8Array(index, length, callback, onerror) {
-			var reader = new FileReader();
+			var reader = Cc['@mozilla.org/files/filereader;1'].createInstance(Ci.nsIDOMFileReader); //new FileReader();
 			reader.onload = function(e) {
 				callback(new Uint8Array(e.target.result));
 			};
@@ -220,7 +229,7 @@
 		}
 
 		function getData(callback, onerror) {
-			var reader = new FileReader();
+			var reader = Cc['@mozilla.org/files/filereader;1'].createInstance(Ci.nsIDOMFileReader); //new FileReader();
 			reader.onload = function(e) {
 				callback(e.target.result);
 			};
@@ -360,21 +369,14 @@
 
 		function step() {
 			index = chunkIndex * CHUNK_SIZE;
-			// use `<=` instead of `<`, because `size` may be 0.
-			if (index <= size) {
+			if (index < size) {
 				reader.readUint8Array(offset + index, Math.min(CHUNK_SIZE, size - index), function(array) {
 					if (onprogress)
 						onprogress(index, size);
 					var msg = index === 0 ? initialMessage : {sn : sn};
 					msg.type = 'append';
 					msg.data = array;
-					
-					// posting a message with transferables will fail on IE10
-					try {
-						worker.postMessage(msg, [array.buffer]);
-					} catch(ex) {
-						worker.postMessage(msg); // retry without transferables
-					}
+					worker.postMessage(msg, [array.buffer]);
 					chunkIndex++;
 				}, onreaderror);
 			} else {
@@ -888,8 +890,11 @@
 			scripts = resolveURLs(scripts);
 		} else {
 			scripts = DEFAULT_WORKER_SCRIPTS[type].slice(0);
+			console.error('scripts[0]:', scripts[0]);
+			console.error('obj.zip.workerScriptsPath:', obj.zip.workerScriptsPath);
 			scripts[0] = (obj.zip.workerScriptsPath || '') + scripts[0];
 		}
+		console.info('scripts[0]:', scripts[0]);
 		var worker = new Worker(scripts[0]);
 		// record total consumed time by inflater/deflater/crc32 in this worker
 		worker.codecTime = worker.crcTime = 0;

@@ -312,7 +312,7 @@ function startup(aData, aReason) {
 	core.addon.path.workersFileUri = OS.Path.join(core.addon.path.xpiFileUri, 'modules', 'workers');
 	core.addon.path.workersJar = core.addon.path.workers.replace(core.addon.path.content, core.addon.path.xpiJar);
 
-	myServices.zip = Cu.import(core.addon.path.modules + 'zip.js').zip;
+	myServices.zip = Cu.import(core.addon.path.modules + 'zip.js').zip; // because zip.js uses Components, it cannot be imported into a ChromeWorker or something like that, it must be imported into the main thread
 	// myServices.zip.workerScriptsPath = OS.Path.join(core.addon.path.workersFileUri, ' ');
 	// myServices.zip.workerScriptsPath = myServices.zip.workerScriptsPath.substr(0, myServices.zip.workerScriptsPath.length-1);
 	myServices.zip.workerScriptsPath = core.addon.path.workers; // os path does not work here. jar might. this path is passed to `new Worker( + 'z-worker.js')`
