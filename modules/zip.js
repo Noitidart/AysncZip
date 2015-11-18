@@ -1,10 +1,3 @@
-// Let's call this file zip.js/zip.js
-const EXPORTED_SYMBOLS = ['zip'];
-const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
-Components.utils.importGlobalProperties(['Blob', 'atob', 'btoa']);
-
-// zip.js content here
-
 /*
  Copyright (c) 2013 Gildas Lormeau. All rights reserved.
 
@@ -182,8 +175,12 @@ Components.utils.importGlobalProperties(['Blob', 'atob', 'btoa']);
 		}
 
 		function readUint8Array(index, length, callback, onerror) {
-			var reader = Cc['@mozilla.org/files/filereader;1'].createInstance(Ci.nsIDOMFileReader); //new FileReader();
+			console.log('in BlobReader readUint8Array');
+			console.log('FileReader:', FileReader);
+			var reader = new FileReader();
+			console.log('reader created:', reader);
 			reader.onload = function(e) {
+				console.log('reader.onload callback entered, e:', e);
 				callback(new Uint8Array(e.target.result));
 			};
 			reader.onerror = onerror;
@@ -227,7 +224,7 @@ Components.utils.importGlobalProperties(['Blob', 'atob', 'btoa']);
 		}
 
 		function getData(callback, onerror) {
-			var reader = Cc['@mozilla.org/files/filereader;1'].createInstance(Ci.nsIDOMFileReader); //new FileReader();
+			var reader = new FileReader();
 			reader.onload = function(e) {
 				callback(e.target.result);
 			};
@@ -361,7 +358,6 @@ Components.utils.importGlobalProperties(['Blob', 'atob', 'btoa']);
 				case 'echo':
 					break;
 				default:
-					Cu.import('resource://gre/modules/devtools/Console.jsm');
 					console.warn('zip.js:launchWorkerProcess: unknown message: ', message);
 			}
 		}
@@ -615,23 +611,27 @@ Components.utils.importGlobalProperties(['Blob', 'atob', 'btoa']);
 			// "End of central directory record" is the last part of a zip archive, and is at least 22 bytes long.
 			// Zip file comment is the last part of EOCDR and has max length of 64KB,
 			// so we only have to search the last 64K + 22 bytes of a archive for EOCDR signature (0x06054b50).
+			console.warn('ok in seekEOCDR');
 			var EOCDR_MIN = 22;
 			if (reader.size < EOCDR_MIN) {
 				onerror(ERR_BAD_FORMAT);
 				return;
 			}
 			var ZIP_COMMENT_MAX = 256 * 256, EOCDR_MAX = EOCDR_MIN + ZIP_COMMENT_MAX;
-
+console.warn('h0');
 			// In most cases, the EOCDR is EOCDR_MIN bytes long
 			doSeek(EOCDR_MIN, function() {
+				console.warn('doSeek callback');
 				// If not found, try within EOCDR_MAX bytes
 				doSeek(Math.min(EOCDR_MAX, reader.size), function() {
+					console.warn('doSeek DOUBLE callback');
 					onerror(ERR_BAD_FORMAT);
 				});
 			});
-
+console.warn('h2');
 			// seek last length bytes of file for EOCDR
 			function doSeek(length, eocdrNotFoundCallback) {
+				console.warn('in doSeek');
 				reader.readUint8Array(reader.size - length, length, function(bytes) {
 					for (var i = bytes.length - EOCDR_MIN; i >= 0; i--) {
 						if (bytes[i] === 0x50 && bytes[i + 1] === 0x4b && bytes[i + 2] === 0x05 && bytes[i + 3] === 0x06) {
@@ -648,9 +648,11 @@ Components.utils.importGlobalProperties(['Blob', 'atob', 'btoa']);
 
 		var zipReader = {
 			getEntries : function(callback) {
+				console.warn('ok in getEntires');
 				var worker = this._worker;
 				// look for End of central directory record
 				seekEOCDR(function(dataView) {
+					console.warn('ok in callback of seekEOCDR');
 					var datalength, fileslength;
 					datalength = dataView.getUint32(16, true);
 					fileslength = dataView.getUint16(8, true);
@@ -920,7 +922,6 @@ Components.utils.importGlobalProperties(['Blob', 'atob', 'btoa']);
 		worker.addEventListener('error', errorHandler);
 		function errorHandler(err) {
 			worker.terminate();
-			Cu.import('resource://gre/modules/devtools/Console.jsm');
 			onerror(err);
 		}
 	}

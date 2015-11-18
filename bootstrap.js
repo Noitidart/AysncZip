@@ -4,10 +4,11 @@ Cu.import('resource:///modules/CustomizableUI.jsm');
 Cu.import('resource://gre/modules/devtools/Console.jsm');
 Cu.import('resource://gre/modules/FileUtils.jsm');
 Cu.import('resource://gre/modules/osfile.jsm');
-Cu.import('resource://gre/modules/Promise.jsm');
+const PromiseWorker = Cu.import('resource://gre/modules/PromiseWorker.jsm', {}).BasePromiseWorker;
 Cu.import('resource://gre/modules/Services.jsm');
 Cu.import('resource://gre/modules/XPCOMUtils.jsm');
 Cu.importGlobalProperties(['Blob']);
+
 
 // Globals
 const core = {
@@ -22,7 +23,8 @@ const core = {
 			locale: 'chrome://asynczip/locale/',
 			resources: 'chrome://asynczip/content/resources/',
 			images: 'chrome://asynczip/content/resources/images/'
-		}
+		},
+		cache_key: Math.random() // set to version on release
 	},
 	os: {
 		name: OS.Constants.Sys.Name.toLowerCase()
@@ -141,11 +143,11 @@ function saveUnzippedToDisk(aDOMWin, aArrayBuffer, aOSPath_destDir, aDefaultName
 	var do_asksubdir = function() {
 		// prompt asking if should create a folder in selected directory or should it just save the contents to the folder
 		var cIn = {value:aDefaultName};
-		var cInput = Services.prompt.prompt(aDOMWin, 'Create Subfolder?', 'Would you like to createa subfolder in destination directory of "' + aOSPath_destDir + '" to unzip the contents into?', cIn, null, {});
+		var cInput = Services.prompt.prompt(aDOMWin, 'Create Subfolder?', 'Would you like to unzip the contents into a subfolder in the selected directory of: ' + aOSPath_destDir + '\n\n (press cancel for no)', cIn, null, {});
 		if (cInput && cIn.value != '') {
 			// make dir first then unzip
 			cOSPath = OS.Path.join(aOSPath_destDir, cIn.value);
-			do_makedir();
+			do_unzip();
 		} else {
 			cOSPath = aOSPath_destDir;
 			// unzip into dest dir
@@ -153,67 +155,29 @@ function saveUnzippedToDisk(aDOMWin, aArrayBuffer, aOSPath_destDir, aDefaultName
 		}
 	}
 	
-	var do_makedir = function() {
-		var promise_makeit = OS.File.makeDir(cOSPath, {ignoreExisting:true});
-		promise_makeit.then(
+	var do_unzip = function() {
+		
+		var promise_ensureDirAndUnzipIntoIt = MainWorker.post('ensureDirAndUnzipIntoIt', [{
+			unzipIntoDir: cOSPath,
+			zipAsArrBuf: aArrayBuffer
+		}], null, [aArrayBuffer]);
+		
+		promise_ensureDirAndUnzipIntoIt.then(
 			function(aVal) {
-				console.log('Fullfilled - promise_makeit - ', aVal);
-				// start - do stuff here - promise_makeit
-				do_unzip();
-				// end - do stuff here - promise_makeit
+				console.log('Fullfilled - promise_ensureDirAndUnzipIntoIt - ', aVal);
+				// start - do stuff here - promise_ensureDirAndUnzipIntoIt
+				// end - do stuff here - promise_ensureDirAndUnzipIntoIt
 			},
 			function(aReason) {
-				var rejObj = {name:'promise_makeit', aReason:aReason};
-				console.warn('Rejected - promise_makeit - ', rejObj);
-				deferredMain_saveUnzippedToDisk.reject(rejObj);
+				var rejObj = {name:'promise_ensureDirAndUnzipIntoIt', aReason:aReason};
+				console.warn('Rejected - promise_ensureDirAndUnzipIntoIt - ', rejObj);
+				// deferred_createProfile.reject(rejObj);
 			}
 		).catch(
 			function(aCaught) {
-				var rejObj = {name:'promise_makeit', aCaught:aCaught};
-				console.error('Caught - promise_makeit - ', rejObj);
-				deferredMain_saveUnzippedToDisk.reject(rejObj);
-			}
-		);
-	}
-	
-	var do_unzip = function() {
-		// use a BlobReader to read the zip from a Blob object
-		var blob = new Blob([new Uint8Array(aArrayBuffer)], {type: 'application/octet-binary'});
-		console.log('myServices.zip:', myServices.zip);
-		myServices.zip.createReader(
-			new myServices.zip.BlobReader(blob),
-			function(reader) {
-
-				// get all entries from the zip
-				reader.getEntries(
-					function(entries) {
-						if (entries.length) {
-							// get first entry content as text
-							console.log('entries:', entries);
-							entries[0].getData(
-								new myServices.zip.TextWriter(),
-								function(text) {
-									// text contains the entry data as a String
-									console.log(text);
-
-									// close the zip reader
-									reader.close(function() {
-										console.info('onclose callback');
-									});
-
-								},
-								function(current, total) {
-									console.info('onprogress callback', current, total);
-								}
-							);
-						} else {
-							console.error('no entries!');
-						}
-					}
-				);
-			},
-			function(error) {
-				console.error('onerror callback, error:', error);
+				var rejObj = {name:'promise_ensureDirAndUnzipIntoIt', aCaught:aCaught};
+				console.error('Caught - promise_ensureDirAndUnzipIntoIt - ', rejObj);
+				// deferred_createProfile.reject(rejObj);
 			}
 		);
 	};
@@ -308,19 +272,46 @@ function startup(aData, aReason) {
 	core.addon.path.xpiJar = 'jar:' + OS.Path.toFileURI(aData.installPath.path) + '!/';
 	core.addon.path.xpiFileUri = aData.installPath.path;
 	
-	
 	core.addon.path.workersFileUri = OS.Path.join(core.addon.path.xpiFileUri, 'modules', 'workers');
 	core.addon.path.workersJar = core.addon.path.workers.replace(core.addon.path.content, core.addon.path.xpiJar);
 
-	myServices.zip = Cu.import(core.addon.path.modules + 'zip.js').zip; // because zip.js uses Components, it cannot be imported into a ChromeWorker or something like that, it must be imported into the main thread
-	// myServices.zip.workerScriptsPath = OS.Path.join(core.addon.path.workersFileUri, ' ');
-	// myServices.zip.workerScriptsPath = myServices.zip.workerScriptsPath.substr(0, myServices.zip.workerScriptsPath.length-1);
-	myServices.zip.workerScriptsPath = core.addon.path.workers; // os path does not work here. jar might. this path is passed to `new Worker( + 'z-worker.js')`
-	
-	console.log('core.addon.path.workersJar:', core.addon.path.workersJar);
-	console.log('core.addon.path.workersFileUri:', core.addon.path.workersFileUri);
-	console.log('core.addon.path.xpiJar:', core.addon.path.xpiJar);
-	console.log('core.addon.path.xpiFileUri:', core.addon.path.xpiFileUri);
+	var promise_getMainWorker = SIPWorker('MainWorker', core.addon.path.workers + 'MainWorker.js?' + core.addon.cache_key);
+	promise_getMainWorker.then(
+		function(aVal) {
+			console.log('Fullfilled - promise_getMainWorker - ', aVal);
+			// start - do stuff here - promise_getMainWorker
+			
+				// setup custom MainWorker messages - PromiseWorker style
+				// Define a custom error prototype.
+				function MainWorkerError(errObj) {
+				  this.message = errObj.message;
+				  this.name = errObj.name;
+				}
+				MainWorkerError.fromMsg = function(msgObj) {
+				  return new MainWorkerError(msgObj);
+				};
+
+				// Register a constructor.
+				MainWorker.ExceptionHandlers['MainWorkerError'] = MainWorkerError.fromMsg;
+			
+			// end - do stuff here - promise_getMainWorker
+		},
+		function(aReason) {
+			var rejObj = {
+				name: 'promise_getMainWorker',
+				aReason: aReason
+			};
+			console.warn('Rejected - promise_getMainWorker - ', rejObj);
+		}
+	).catch(
+		function(aCaught) {
+			var rejObj = {
+				name: 'promise_getMainWorker',
+				aCaught: aCaught
+			};
+			console.error('Caught - promise_getMainWorker - ', rejObj);
+		}
+	);
 	
 	CustomizableUI.createWidget({
 		id: 'cui_asynczip',
@@ -429,49 +420,45 @@ function shutdown(aData, aReason) {
 
 // start - common helper functions
 function Deferred() {
-	if (Promise && Promise.defer) {
+	// update 062115 for typeof
+	if (typeof(Promise) != 'undefined' && Promise.defer) {
 		//need import of Promise.jsm for example: Cu.import('resource:/gree/modules/Promise.jsm');
 		return Promise.defer();
-	} else if (PromiseUtils && PromiseUtils.defer) {
+	} else if (typeof(PromiseUtils) != 'undefined'  && PromiseUtils.defer) {
 		//need import of PromiseUtils.jsm for example: Cu.import('resource:/gree/modules/PromiseUtils.jsm');
 		return PromiseUtils.defer();
-	} else if (Promise) {
-		try {
-			/* A method to resolve the associated Promise with the value passed.
-			 * If the promise is already settled it does nothing.
-			 *
-			 * @param {anything} value : This value is used to resolve the promise
-			 * If the value is a Promise then the associated promise assumes the state
-			 * of Promise passed as value.
-			 */
-			this.resolve = null;
-
-			/* A method to reject the assocaited Promise with the value passed.
-			 * If the promise is already settled it does nothing.
-			 *
-			 * @param {anything} reason: The reason for the rejection of the Promise.
-			 * Generally its an Error object. If however a Promise is passed, then the Promise
-			 * itself will be the reason for rejection no matter the state of the Promise.
-			 */
-			this.reject = null;
-
-			/* A newly created Pomise object.
-			 * Initially in pending state.
-			 */
-			this.promise = new Promise(function(resolve, reject) {
-				this.resolve = resolve;
-				this.reject = reject;
-			}.bind(this));
-			Object.freeze(this);
-		} catch (ex) {
-			console.error('Promise not available!', ex);
-			throw new Error('Promise not available!');
-		}
 	} else {
-		throw new Error('Promise not available!');
+		/* A method to resolve the associated Promise with the value passed.
+		 * If the promise is already settled it does nothing.
+		 *
+		 * @param {anything} value : This value is used to resolve the promise
+		 * If the value is a Promise then the associated promise assumes the state
+		 * of Promise passed as value.
+		 */
+		this.resolve = null;
+
+		/* A method to reject the assocaited Promise with the value passed.
+		 * If the promise is already settled it does nothing.
+		 *
+		 * @param {anything} reason: The reason for the rejection of the Promise.
+		 * Generally its an Error object. If however a Promise is passed, then the Promise
+		 * itself will be the reason for rejection no matter the state of the Promise.
+		 */
+		this.reject = null;
+
+		/* A newly created Pomise object.
+		 * Initially in pending state.
+		 */
+		this.promise = new Promise(function(resolve, reject) {
+			this.resolve = resolve;
+			this.reject = reject;
+		}.bind(this));
+		Object.freeze(this);
 	}
 }
 
+// SIPWorker as of Rev1
+var bootstrap = this; // needed for SIPWorker
 function SIPWorker(workerScopeName, aPath, aCore=core) {
 	// "Start and Initialize PromiseWorker"
 	// returns promise
