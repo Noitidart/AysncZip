@@ -119,7 +119,7 @@ function ensureDirAndUnzipIntoIt(aParams) {
 	console.log('zip:', zip);
 	console.log('zipAsBlob:', zipAsBlob);
 	
-	zip.createReader(new zip.BlobReader(zipAsBlob),
+	zip.createReader(new zip.Uint8ArrayReader(zipAsBlob),
 		function(reader) {
 			console.error('in createReader callback:', reader);
 			// get all entries from the zip

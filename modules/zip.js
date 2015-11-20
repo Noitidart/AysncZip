@@ -198,6 +198,29 @@
 	BlobReader.prototype = new Reader();
 	BlobReader.prototype.constructor = BlobReader;
 
+	// start - noida PR
+	function Uint8ArrayReader(uint8array) {
+		var that = this;
+
+		function init(callback) {
+			that.length = uint8array.length;
+			callback();
+		}
+
+		function readUint8Array(index, length, callback, onerror) {
+			console.log('in Uint8ArrayReader readUint8Array');
+			callback(uint8array.slice(index, length));
+			// reader.onerror = onerror; // never will happen
+		}
+
+		that.length = 0;
+		that.init = init;
+		that.readUint8Array = readUint8Array;
+	}
+	Uint8ArrayReader.prototype = new Reader();
+	Uint8ArrayReader.prototype.constructor = Uint8ArrayReader;
+	// end - noida PR
+	
 	// Writers
 
 	function Writer() {
@@ -300,6 +323,32 @@
 	BlobWriter.prototype = new Writer();
 	BlobWriter.prototype.constructor = BlobWriter;
 
+	// start - noida PR
+	function Uint8ArrayWriter(contentType) {
+		var uint8array, that = this;
+
+		function init(callback) {
+			uint8array = new Uint8Array();
+			callback();
+		}
+
+		function writeUint8Array(array, callback) {
+			uint8array = array;
+			callback();
+		}
+
+		function getData(callback) {
+			callback(uint8array);
+		}
+
+		that.init = init;
+		that.writeUint8Array = writeUint8Array;
+		that.getData = getData;
+	}
+	Uint8ArrayWriter.prototype = new Writer();
+	Uint8ArrayWriter.prototype.constructor = Uint8ArrayWriter;
+	// end - noida PR
+	
 	/** 
 	 * inflate/deflate core functions
 	 * @param worker {Worker} web worker for the task.
@@ -933,9 +982,11 @@ console.warn('h2');
 		Reader : Reader,
 		Writer : Writer,
 		BlobReader : BlobReader,
-		Data64URIReader : Data64URIReader,
+		Uint8ArrayReader : BlobReader,
+		Data64URIReader : Uint8ArrayReader,
 		TextReader : TextReader,
 		BlobWriter : BlobWriter,
+		Uint8ArrayWriter : Uint8ArrayWriter,
 		Data64URIWriter : Data64URIWriter,
 		TextWriter : TextWriter,
 		createReader : function(reader, callback, onerror) {
